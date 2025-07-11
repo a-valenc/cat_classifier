@@ -5,7 +5,7 @@ import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 
-IMG_SIZE = (96, 96)
+IMG_SIZE = (128, 128)
 
 @st.cache_resource
 def load_trained_model():
