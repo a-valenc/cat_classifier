@@ -3,10 +3,20 @@ import numpy as np
 from PIL import Image
 import tensorflow as tf
 from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.image import img_to_array
+from tensorflow.keras.preprocessing.image import load_img, img_to_array
+import tempfile
 
+# Image input size expected by the model
 IMG_SIZE = (128, 128)
 
+# Class labels
+class_labels = [
+    "American Shorthair", "Bengal", "British Shorthair",
+    "Egyptian Mau", "Maine Coon", "Persian",
+    "Ragdoll", "Siamese", "Sphynx", "Tuxedo"
+]
+
+# Load the trained model
 @st.cache_resource
 def load_trained_model():
     model = load_model("v2_model.keras")
@@ -14,18 +24,19 @@ def load_trained_model():
 
 model = load_trained_model()
 
-class_labels = [
-    "American Shorthair", "Bengal", "British Shorthair",
-    "Egyptian Mau", "Maine Coon", "Persian",
-    "Ragdoll", "Siamese", "Sphynx", "Tuxedo"
-]
-
+# Preprocess image using same pipeline as your notebook
 def preprocess_image(image, target_size=IMG_SIZE):
-    image = image.resize(target_size)
-    img_array = img_to_array(image) / 255.0
-    img_array = np.expand_dims(img_array, axis=0)
-    return img_array
+    # Save the uploaded image to a temporary file
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
+        image.save(tmp_file.name)
 
+        # Load it back using Keras's `load_img()` for consistency
+        keras_img = load_img(tmp_file.name, target_size=target_size)
+        img_array = img_to_array(keras_img).astype("float32") / 255.0
+        img_array = np.expand_dims(img_array, axis=0)
+        return img_array
+
+# Prediction function
 def predict(image):
     processed = preprocess_image(image)
     preds = model.predict(processed)[0]
@@ -33,6 +44,7 @@ def predict(image):
     confidence = preds[index]
     return index, confidence, preds
 
+# Streamlit app layout
 st.set_page_config(page_title="🐱 Cat Breed Classifier", layout="centered")
 st.title("🐱 Cat Breed Classifier")
 
@@ -47,6 +59,7 @@ if uploaded_file:
     st.markdown(f"### 🐾 Predicted Breed: **{class_labels[index]}**")
     st.markdown(f"Confidence Score: `{confidence:.2f}`")
 
+    # Display top 3 predictions
     st.markdown("### 🔍 Top 3 Predictions")
     top_indices = np.argsort(probs)[::-1][:3]
     for i in top_indices:
