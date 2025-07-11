@@ -5,30 +5,29 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from io import BytesIO
 
-# Expected image size for your model
+# Image size your model expects
 IMG_SIZE = (128, 128)
 
-# ✅ CORRECTED class label order based on training data
+# ✅ Correct class labels based on your actual dataset (alphabetically sorted)
 class_labels = [
-    "American Shorthair", "Bengal", "British Shorthair",
-    "Egyptian Mau", "Maine Coon", "Persian",
-    "Sphynx", "Ragdoll", "Siamese", "Tuxedo"
+    "Bengal", "Egyptian Mau", "Persian",
+    "Ragdoll", "Siamese", "Sphynx", "Tuxedo"
 ]
 
-# Load model once and cache it
+# Load the trained model
 @st.cache_resource
 def load_trained_model():
     return load_model("v2_model.keras")
 
 model = load_trained_model()
 
-# Preprocessing function
-def preprocess_image(image_bytes, target_size=IMG_SIZE):
-    img = load_img(BytesIO(image_bytes), target_size=target_size)
+# Image preprocessing
+def preprocess_image(image_bytes):
+    img = load_img(BytesIO(image_bytes), target_size=IMG_SIZE)
     img_array = img_to_array(img).astype("float32") / 255.0
     return np.expand_dims(img_array, axis=0)
 
-# Prediction function
+# Prediction logic
 def predict(image_bytes):
     processed = preprocess_image(image_bytes)
     preds = model.predict(processed)[0]
