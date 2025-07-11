@@ -9,7 +9,7 @@ IMG_SIZE = (96, 96)
 
 @st.cache_resource
 def load_trained_model():
-    model = load_model("your_model.h5")
+    model = load_model("v2_model.keras")
     return model
 
 model = load_trained_model()
