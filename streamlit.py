@@ -1,12 +1,11 @@
 import streamlit as st
 import numpy as np
-from PIL import Image
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
-import tempfile
+from io import BytesIO
 
-# Image input size expected by the model
+# Set expected image size (based on your model)
 IMG_SIZE = (128, 128)
 
 # Class labels
@@ -16,51 +15,42 @@ class_labels = [
     "Ragdoll", "Siamese", "Sphynx", "Tuxedo"
 ]
 
-# Load the trained model
+# Load model once and cache it
 @st.cache_resource
 def load_trained_model():
-    model = load_model("v2_model.keras")
-    return model
+    return load_model("v2_model.keras")
 
 model = load_trained_model()
 
-# Preprocess image using same pipeline as your notebook
-def preprocess_image(image, target_size=IMG_SIZE):
-    # Save the uploaded image to a temporary file
-    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
-        image.save(tmp_file.name)
-
-        # Load it back using Keras's `load_img()` for consistency
-        keras_img = load_img(tmp_file.name, target_size=target_size)
-        img_array = img_to_array(keras_img).astype("float32") / 255.0
-        img_array = np.expand_dims(img_array, axis=0)
-        return img_array
+# Preprocessing function using raw image bytes
+def preprocess_image(image_bytes, target_size=IMG_SIZE):
+    img = load_img(BytesIO(image_bytes), target_size=target_size)
+    img_array = img_to_array(img).astype("float32") / 255.0
+    return np.expand_dims(img_array, axis=0)
 
 # Prediction function
-def predict(image):
-    processed = preprocess_image(image)
+def predict(image_bytes):
+    processed = preprocess_image(image_bytes)
     preds = model.predict(processed)[0]
     index = np.argmax(preds)
-    confidence = preds[index]
-    return index, confidence, preds
+    confidence = preds[index] * 100  # Convert to percentage
+    return index, confidence
 
-# Streamlit app layout
+# Streamlit UI
 st.set_page_config(page_title="🐱 Cat Breed Classifier", layout="centered")
 st.title("🐱 Cat Breed Classifier")
 
 uploaded_file = st.file_uploader("Upload a cat image", type=["jpg", "jpeg", "png"])
 
 if uploaded_file:
-    image = Image.open(uploaded_file).convert("RGB")
+    # Display uploaded image
+    image = load_img(uploaded_file)
     st.image(image, caption="Uploaded Image", use_container_width=True)
 
-    index, confidence, probs = predict(image)
+    # Run prediction
+    image_bytes = uploaded_file.read()
+    predicted_index, confidence = predict(image_bytes)
 
-    st.markdown(f"### 🐾 Predicted Breed: **{class_labels[index]}**")
-    st.markdown(f"Confidence Score: `{confidence:.2f}`")
-
-    # Display top 3 predictions
-    st.markdown("### 🔍 Top 3 Predictions")
-    top_indices = np.argsort(probs)[::-1][:3]
-    for i in top_indices:
-        st.write(f"{class_labels[i]}: {probs[i]*100:.2f}%")
+    # Show result
+    st.markdown(f"### 🐾 Predicted Breed: **{class_labels[predicted_index]}**")
+    st.markdown(f"### 🎯 Confidence: **{confidence:.2f}%**")
